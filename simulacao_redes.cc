@@ -39,6 +39,9 @@
 #include <string>
 #include <cassert>
 
+#include <list> 
+#include <iterator>
+
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -48,9 +51,6 @@
 #include "ns3/ipv4-global-routing-helper.h"
 
 #include "ns3/traffic-control-module.h"
-#include <fstream>
-#include "ns3/core-module.h"
-#include "ns3/internet-module.h"
 #include "ns3/csma-module.h"
 #include "ns3/internet-apps-module.h"
 #include "ns3/ipv4-static-routing-helper.h"
@@ -60,9 +60,73 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("SimpleGlobalRoutingExample");
 
-int 
-main (int argc, char *argv[])
-{
+/**
+ * Cria e instala no noh origem uma aplicacao que envia pacotes de tamanho packetSize a
+ * a uma taxa de dataRate para a aplicacao no noh de endereco ip_destino que  esta
+ * escutando na porta porta, durante o tempo tempo_inicio ate o tempo_fim.
+ */
+void aplicacao_enviadora(Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
+    
+    OnOffHelper onoff ("ns3::TcpSocketFactory", 
+                 Address (InetSocketAddress (ip_destino, porta)));
+    onoff.SetConstantRate (dataRate, packetSize);
+    ApplicationContainer apps = onoff.Install (origem);
+    apps.Start (tempo_inicio);
+    apps.Stop (tempo_fim);              
+}
+
+/**
+ * Cria no e instala no noh receptor uma aplicacao receptora de pacotes que chegam na porta indicada.
+ * Inicia no tempo tempo_inicio e termina no tempo tempo_fim.
+ */
+void aplicacao_receptora(Time tempo_inicio, Time tempo_fim, Ptr<Node> receptor, uint16_t porta) {
+    PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), porta)));
+    ApplicationContainer apps = sink.Install (receptor);
+    apps.Start (tempo_inicio);
+    apps.Stop (tempo_fim);
+}
+
+/**
+ * Criar uma aplicacao de envio de mensagem e outra recebimento nos nohs indicados
+ * como origem e destino, respectivamente. Utiliza a porta indicada.
+ */
+void simular_fluxo(Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, Ptr<Node> receptor, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
+    aplicacao_enviadora(tempo_inicio, tempo_fim, origem, ip_destino, dataRate, packetSize, porta);
+    aplicacao_receptora(tempo_inicio, tempo_fim, receptor, porta);
+}
+
+
+/**
+ * Testa a conexao de um no de origem com uma lista de ips realizando um ping
+ * para cada um desses ips.
+ */
+void testar_conexao(Ptr<Node> origem, std::list <Ipv4Address> enderecos) {
+
+    uint32_t packetSize = 1024;
+    Time interPacketInterval = Seconds (1.0);
+    
+    double tempo_inicio = 1.0;
+    double tempo_fim = 3.0;
+    double diferenca = tempo_fim - tempo_inicio;
+    
+    std::list <Ipv4Address> :: iterator iterador;
+    for(iterador = enderecos.begin(); iterador != enderecos.end(); ++iterador) { 
+        Ipv4Address destino = *iterador; 
+        V4PingHelper ping (destino);
+        ping.SetAttribute ("Interval", TimeValue (interPacketInterval));
+        ping.SetAttribute ("Size", UintegerValue (packetSize));
+        ping.SetAttribute ("Verbose", BooleanValue (true));
+        ApplicationContainer apps = ping.Install (origem);
+        apps.Start (Seconds (tempo_inicio));
+        apps.Stop (Seconds (tempo_fim));
+        
+        tempo_inicio += diferenca;
+        tempo_fim += diferenca;
+    }
+}
+
+int main (int argc, char *argv[]) {
   // Users may find it convenient to turn on explicit debugging
   // for selected modules; the below lines suggest how to do this
 #if 1 
@@ -70,8 +134,8 @@ main (int argc, char *argv[])
 #endif
 
   // Set up some default values for the simulation.  Use the 
-  Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (210));
-  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("18000Mb/s"));
+  //Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (1024));
+  //Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("100Mb/s"));
 
   //DefaultValue::Bind ("DropTailQueue::m_maxPackets", 30);
 
@@ -82,14 +146,8 @@ main (int argc, char *argv[])
   cmd.AddValue ("EnableMonitor", "Enable Flow Monitor", enableFlowMonitor);
   cmd.Parse (argc, argv);
 
-  // Here, we will explicitly create four nodes.  In more sophisticated
-  // topologies, we could configure a node factory.
   NS_LOG_INFO ("Create nodes.");
   NodeContainer c;
-  c.Create (4);
-  NodeContainer n0n2 = NodeContainer (c.Get (0), c.Get (2));
-  NodeContainer n1n2 = NodeContainer (c.Get (1), c.Get (2));
-  NodeContainer n3n2 = NodeContainer (c.Get (3), c.Get (2));
 
     // Global
     Ptr<Node> G1 = CreateObject<Node>();
@@ -148,6 +206,8 @@ main (int argc, char *argv[])
     NodeContainer container_L3_L4(L3, L4);
     NodeContainer container_L3_L5(L3, L5);
     
+    
+    
     // Global
     c.Add(G1);
     c.Add(G2);
@@ -177,25 +237,30 @@ main (int argc, char *argv[])
     InternetStackHelper internet;
     internet.Install (c);
 
-  // We create the channels first without any IP addressing information
-  NS_LOG_INFO ("Create channels.");
-  PointToPointHelper p2p;
+
+    // We create the channels first without any IP addressing information
+    NS_LOG_INFO ("Create channels.");
+    PointToPointHelper p2p;
+  
+    std::string tamanho_fila_global = "10p";
+    std::string tamanho_fila_comum = "4p";
   
     /* ############################### GLOBAL ############################### */
     p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("20ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_global));
     NetDeviceContainer G1_G2 = p2p.Install(container_G1_G2);
     
     p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("100ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_global));
     NetDeviceContainer G2_G3 = p2p.Install(container_G2_G3);
 
     /* ########################### AMERICA DO SUL ########################### */
+	
     p2p.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("10ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer S1_L1 = p2p.Install(container_S1_L1);
     NetDeviceContainer S2_L1 = p2p.Install(container_S2_L1);
     NetDeviceContainer S3_L1 = p2p.Install(container_S3_L1);
@@ -203,7 +268,7 @@ main (int argc, char *argv[])
 
     p2p.SetDeviceAttribute ("DataRate", StringValue ("20Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("20ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer L1_G2 = p2p.Install(container_L1_G2);
     NetDeviceContainer L2_G1 = p2p.Install(container_L2_G1);
     NetDeviceContainer L1_L2 = p2p.Install(container_L1_L2);
@@ -211,23 +276,23 @@ main (int argc, char *argv[])
     /* ########################## AMERICA DO NORTE ########################## */
     p2p.SetDeviceAttribute ("DataRate", StringValue ("50Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("40ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer L3_G3 = p2p.Install(container_L3_G3);
     
     p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("40ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer L3_L5 = p2p.Install(container_L3_L5);
     
     p2p.SetDeviceAttribute ("DataRate", StringValue ("20Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("20ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer L3_L4 = p2p.Install(container_L3_L4);
     NetDeviceContainer L4_G3 = p2p.Install(container_L4_G3);
 
     p2p.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
     p2p.SetChannelAttribute ("Delay", StringValue ("5ms"));
-    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue ("1p"));
+    p2p.SetQueue ("ns3::DropTailQueue", "MaxSize", StringValue (tamanho_fila_comum));
     NetDeviceContainer N1_L3 = p2p.Install(container_N1_L3);
     NetDeviceContainer N2_L3 = p2p.Install(container_N2_L3);
     NetDeviceContainer N3_L3 = p2p.Install(container_N3_L3);
@@ -242,13 +307,35 @@ main (int argc, char *argv[])
     tch.SetRootQueueDisc ("ns3::RedQueueDisc");
     tch.Install (G1_G2);
     tch.Install (G2_G3);
+    
+    tch.Install (S1_L1);
+    tch.Install (S2_L1);
+    tch.Install (S3_L1);
+    tch.Install (S4_L2);
+    
+    tch.Install (L1_G2);
+    tch.Install (L2_G1);
+    tch.Install (L1_L2);
+    
+    tch.Install (L3_G3);
+    tch.Install (L3_L5);
+    tch.Install (L3_L4);
+    tch.Install (L4_G3);
+    
+    tch.Install (N1_L3);
+    tch.Install (N2_L3);
+    tch.Install (N3_L3);
+    tch.Install (N4_L4);
+    tch.Install (N5_L4);
+    tch.Install (N6_L4);
+    tch.Install (N7_L5);
+    tch.Install (N8_L5);
+    tch.Install (L5_G3);
 
 
-
-  // Later, we add IP addresses.
-  NS_LOG_INFO ("Assign IP Addresses.");
-  Ipv4AddressHelper ipv4;
-
+    /* ##################### ATRIBUICAO DE ENDERECOS IPS ##################### */
+    NS_LOG_INFO ("Assign IP Addresses.");
+    Ipv4AddressHelper ipv4;
 
     // Global
     ipv4.SetBase ("10.0.1.0", "255.255.255.0");
@@ -318,102 +405,160 @@ main (int argc, char *argv[])
 
 
 
-  // Create router nodes, initialize routing database and set up the routing
-  // tables in the nodes.
-  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-  // Create the OnOff application to send UDP datagrams of size
-  // 210 bytes at a rate of 448 Kb/s
-  NS_LOG_INFO ("Create Applications.");
-  uint16_t port = 9;   // Discard port (RFC 863)
-  OnOffHelper onoff ("ns3::UdpSocketFactory", 
-                     Address (InetSocketAddress (interface_global_G1_G2.GetAddress(1), port)));
-  onoff.SetConstantRate (DataRate ("4000kb/s"));
-  ApplicationContainer apps = onoff.Install (G1);
-  apps.Start (Seconds (1.0));
-  apps.Stop (Seconds (10.0));
-
-  // Create a packet sink to receive these packets
-  PacketSinkHelper sink ("ns3::UdpSocketFactory",
-                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-  apps = sink.Install (G2);
-  apps.Start (Seconds (1.0));
-  apps.Stop (Seconds (10.0));
-
-  // Create a similar flow from n3 to n1, starting at time 1.1 seconds
-  onoff.SetAttribute ("Remote", 
-                      AddressValue (InetSocketAddress (interface_global_G2_G3.GetAddress(1), port)));
-  apps = onoff.Install (G1);
-  apps.Start (Seconds (1.1));
-  apps.Stop (Seconds (10.0));
-
-  // Create a packet sink to receive these packets
-  apps = sink.Install (G3);
-  apps.Start (Seconds (1.1));
-  apps.Stop (Seconds (10.0));
-  
-  
-    uint32_t packetSize = 1024;
-    Time interPacketInterval = Seconds (1.0);
-    V4PingHelper ping (interface_global_S1_L1.GetAddress(1));
-
-    ping.SetAttribute ("Interval", TimeValue (interPacketInterval));
-    ping.SetAttribute ("Size", UintegerValue (packetSize));
-    ping.SetAttribute ("Verbose", BooleanValue (true));
-    apps = ping.Install (S4);
-    apps.Start (Seconds (1.0));
-    apps.Stop (Seconds (10.0));
-  
-    /*uint32_t packetSize = 1024;
-    Time interPacketInterval = Seconds (1.0);
-    V4PingHelper ping (interface_global_G2_G5.GetAddress(1));
-
-    ping.SetAttribute ("Interval", TimeValue (interPacketInterval));
-    ping.SetAttribute ("Size", UintegerValue (packetSize));
-    ping.SetAttribute ("Verbose", BooleanValue (true));
-    apps = ping.Install (G3);
-    apps.Start (Seconds (1.0));
-    apps.Stop (Seconds (10.0));*/
-  
-    /*onoff.SetAttribute ("Remote", 
-                      AddressValue (InetSocketAddress (interface_global_G2_G3.GetAddress(0), port)));
-    apps = onoff.Install (G1);
-    apps.Start (Seconds (1.1));
-    apps.Stop (Seconds (10.0));
-
-    // Create a packet sink to receive these packets
-    apps = sink.Install (G3);
-    apps.Start (Seconds (1.1));
-    apps.Stop (Seconds (10.0));
+    // Create router nodes, initialize routing database and set up the routing
+    // tables in the nodes.
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
     
-    onoff.SetAttribute ("Remote", 
-                      AddressValue (InetSocketAddress (interface_global_G2_G5.GetAddress(0), port)));
-    apps = onoff.Install (G2);
-    apps.Start (Seconds (1.1));
-    apps.Stop (Seconds (10.0));*/
 
+    /* ######################## CONFIGURAR MULTICAST ######################## */
+    #if 0
+    
+       Ptr<Node> sender = N1;
+       Ptr<NetDevice> senderIf = N1_L3.Get(0);
+       multicast.SetDefaultMulticastRoute (sender, senderIf);
+       
+       
+    #endif
+
+
+    /* ##################### TESTE PING DE N1 PARA TODOS #################### */
+    #if 0
+        std::list <Ipv4Address> lista_de_ips;
+        lista_de_ips.push_back(Ipv4Address("10.1.7.1")); // N1
+        lista_de_ips.push_back(Ipv4Address("10.1.8.1")); // N2
+        lista_de_ips.push_back(Ipv4Address("10.1.9.1")); // N3
+        lista_de_ips.push_back(Ipv4Address("10.1.3.1")); // N4
+        lista_de_ips.push_back(Ipv4Address("10.1.5.1")); // N5
+        lista_de_ips.push_back(Ipv4Address("10.1.2.1")); // N6
+        lista_de_ips.push_back(Ipv4Address("10.1.11.1")); // N7
+        lista_de_ips.push_back(Ipv4Address("10.1.12.1")); // N8
+        lista_de_ips.push_back(Ipv4Address("10.55.4.1")); // S1
+        lista_de_ips.push_back(Ipv4Address("10.55.2.1")); // S2
+        lista_de_ips.push_back(Ipv4Address("10.55.3.1")); // S3
+        lista_de_ips.push_back(Ipv4Address("10.55.7.1")); // S4
+
+        testar_conexao(N1, lista_de_ips);
+    #endif
+
+    /* ####################### MUITO CONGESTIONAMENTO ####################### */
+    #if 0
+        // Portas escolhidas de 9 ate 15 para evitar eventuais conflitos
+        DataRate dataRate = DataRate ("100Mbps");
+        //DataRate dataRate = DataRate ("50Mbps");
+        uint32_t packetSize = 1024;
+        simular_fluxo(Seconds (1.0), Seconds (20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 9);
+        simular_fluxo(Seconds (5.0), Seconds (10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(Seconds (10.0), Seconds (20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 11);
+        simular_fluxo(Seconds (15.0), Seconds (20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 12);
+        simular_fluxo(Seconds (20.0), Seconds (25.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 13);
+        simular_fluxo(Seconds (20.0), Seconds (25.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 14);
+        simular_fluxo(Seconds (25.0), Seconds (30.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 15);
+    #endif
+
+    /* */
+    #if 1
+        DataRate dataRate = DataRate ("100Mbps");
+        uint32_t packetSize = 1024;
+        // Servidor envia para hosts
+        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.8.1"), N2, dataRate, packetSize, 10);
+        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.5.1"), N5, dataRate, packetSize, 11);
+        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.2.1"), N6, dataRate, packetSize, 12);
+        
+        // Interferencia
+        simular_fluxo(Seconds (1.0), Seconds (15.0), N8, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 13);
+        simular_fluxo(Seconds (1.0), Seconds (15.0), N4, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 14);
+        simular_fluxo(Seconds (1.0), Seconds (10.0), N8, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 15);
+        simular_fluxo(Seconds (1.0), Seconds (25.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 16);
+        simular_fluxo(Seconds (1.0), Seconds (30.0), N4, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 17);
+        
+        // Servidor envia para mais hosts
+        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.1.11.1"), N7, dataRate, packetSize, 18);
+        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 19);
+        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.55.7.1"), S4, dataRate, packetSize, 20);
+        
+        // Servidor envia para mais hosts
+        simular_fluxo(Seconds (7.0), Seconds (10.0), N5, Ipv4Address("10.1.11.1"), N7, dataRate, packetSize, 21);
+        simular_fluxo(Seconds (15.0), Seconds (17.0), N7, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 22);
+        simular_fluxo(Seconds (20.0), Seconds (23.0), N8, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 23);
+        simular_fluxo(Seconds (25.0), Seconds (27.0), N6, Ipv4Address("10.1.3.1"), N4, dataRate, packetSize, 24);
+        simular_fluxo(Seconds (30.0), Seconds (33.0), N3, Ipv4Address("10.1.2.1"), N6, dataRate, packetSize, 25);
+    #endif
+
+    #if 0
+        //uint16_t port = 9;
+        
+        OnOffHelper onoff ("ns3::TcpSocketFactory", 
+                     Address (InetSocketAddress (Ipv4Address("10.1.5.1"), port)));
+        onoff.SetConstantRate (DataRate ("4000kb/s"));
+        ApplicationContainer apps = onoff.Install (N1);
+        apps.Start (Seconds (1.0));
+        apps.Stop (Seconds (10.0));
+
+        // Create a packet sink to receive these packets
+        PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                             Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+        apps = sink.Install (N5);
+        apps.Start (Seconds (1.0));
+        apps.Stop (Seconds (10.0));
+    
+        onoff.SetAttribute ("Remote", 
+                      AddressValue (InetSocketAddress (Ipv4Address("10.1.8.1"), port)));
+        apps = onoff.Install (N1);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));
+
+        // Create a packet sink to receive these packets
+        apps = sink.Install (N2);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));
+        
+        /*OnOffHelper onoff ("Remote", 
+                      AddressValue (InetSocketAddress (Ipv4Address("10.1.5.1"), port)));
+        onoff.SetConstantRate (DataRate ("4000kb/s"));
+        ApplicationContainer apps = onoff.Install (N1);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));
+
+        // Create a packet sink to receive these packets
+        
+        PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+        
+        apps = sink.Install (N5);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));
+        
+        onoff.SetAttribute ("Remote", 
+                      AddressValue (InetSocketAddress (Ipv4Address("10.1.8.1"), port)));
+        apps = onoff.Install (N1);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));
+
+        // Create a packet sink to receive these packets
+        apps = sink.Install (N2);
+        apps.Start (Seconds (1.1));
+        apps.Stop (Seconds (10.0));*/
+    #endif
 
     AsciiTraceHelper ascii;
     p2p.EnableAsciiAll (ascii.CreateFileStream ("simple-global-routing.tr"));
     p2p.EnablePcapAll ("simple-global-routing");
 
-  // Flow Monitor
-  FlowMonitorHelper flowmonHelper;
-  if (enableFlowMonitor)
-    {
-      flowmonHelper.InstallAll ();
+    // Flow Monitor
+    FlowMonitorHelper flowmonHelper;
+    if (enableFlowMonitor) {
+        flowmonHelper.InstallAll ();
     }
 
-  NS_LOG_INFO ("Run Simulation.");
-  Simulator::Stop (Seconds (11));
-  Simulator::Run ();
-  NS_LOG_INFO ("Done.");
+    NS_LOG_INFO ("Run Simulation.");
+    Simulator::Stop (Seconds (200));
+    Simulator::Run ();
+    NS_LOG_INFO ("Done.");
 
-  if (enableFlowMonitor)
-    {
-      flowmonHelper.SerializeToXmlFile ("simple-global-routing.flowmon", false, false);
+    if (enableFlowMonitor) {
+        flowmonHelper.SerializeToXmlFile ("simple-global-routing.flowmon", false, false);
     }
 
-  Simulator::Destroy ();
-  return 0;
+    Simulator::Destroy ();
+    return 0;
 }
