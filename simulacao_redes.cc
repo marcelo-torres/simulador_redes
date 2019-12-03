@@ -65,9 +65,9 @@ NS_LOG_COMPONENT_DEFINE ("SimpleGlobalRoutingExample");
  * a uma taxa de dataRate para a aplicacao no noh de endereco ip_destino que  esta
  * escutando na porta porta, durante o tempo tempo_inicio ate o tempo_fim.
  */
-void aplicacao_enviadora(Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
+void aplicacao_enviadora(std::string protocol, Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
     
-    OnOffHelper onoff ("ns3::TcpSocketFactory", 
+    OnOffHelper onoff (protocol, 
                  Address (InetSocketAddress (ip_destino, porta)));
     onoff.SetConstantRate (dataRate, packetSize);
     ApplicationContainer apps = onoff.Install (origem);
@@ -79,8 +79,8 @@ void aplicacao_enviadora(Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ip
  * Cria no e instala no noh receptor uma aplicacao receptora de pacotes que chegam na porta indicada.
  * Inicia no tempo tempo_inicio e termina no tempo tempo_fim.
  */
-void aplicacao_receptora(Time tempo_inicio, Time tempo_fim, Ptr<Node> receptor, uint16_t porta) {
-    PacketSinkHelper sink ("ns3::TcpSocketFactory",
+void aplicacao_receptora(std::string protocol, Time tempo_inicio, Time tempo_fim, Ptr<Node> receptor, uint16_t porta) {
+    PacketSinkHelper sink (protocol,
                          Address (InetSocketAddress (Ipv4Address::GetAny (), porta)));
     ApplicationContainer apps = sink.Install (receptor);
     apps.Start (tempo_inicio);
@@ -91,9 +91,9 @@ void aplicacao_receptora(Time tempo_inicio, Time tempo_fim, Ptr<Node> receptor, 
  * Criar uma aplicacao de envio de mensagem e outra recebimento nos nohs indicados
  * como origem e destino, respectivamente. Utiliza a porta indicada.
  */
-void simular_fluxo(Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, Ptr<Node> receptor, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
-    aplicacao_enviadora(tempo_inicio, tempo_fim, origem, ip_destino, dataRate, packetSize, porta);
-    aplicacao_receptora(tempo_inicio, tempo_fim, receptor, porta);
+void simular_fluxo(std::string protocol, Time tempo_inicio, Time tempo_fim, Ptr<Node> origem, Ipv4Address ip_destino, Ptr<Node> receptor, DataRate dataRate, uint32_t packetSize, uint16_t porta) {
+    aplicacao_enviadora(protocol, tempo_inicio, tempo_fim, origem, ip_destino, dataRate, packetSize, porta);
+    aplicacao_receptora(protocol, tempo_inicio, tempo_fim, receptor, porta);
 }
 
 
@@ -404,9 +404,6 @@ int main (int argc, char *argv[]) {
     Ipv4InterfaceContainer interface_global_L3_L4 = ipv4.Assign(L3_L4);
 
 
-
-    // Create router nodes, initialize routing database and set up the routing
-    // tables in the nodes.
     Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
     
 
@@ -440,109 +437,78 @@ int main (int argc, char *argv[]) {
         testar_conexao(N1, lista_de_ips);
     #endif
 
-    /* ####################### MUITO CONGESTIONAMENTO ####################### */
-    #if 0
-        // Portas escolhidas de 9 ate 15 para evitar eventuais conflitos
-        DataRate dataRate = DataRate ("100Mbps");
-        //DataRate dataRate = DataRate ("50Mbps");
-        uint32_t packetSize = 1024;
-        simular_fluxo(Seconds (1.0), Seconds (20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 9);
-        simular_fluxo(Seconds (5.0), Seconds (10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(Seconds (10.0), Seconds (20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 11);
-        simular_fluxo(Seconds (15.0), Seconds (20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 12);
-        simular_fluxo(Seconds (20.0), Seconds (25.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 13);
-        simular_fluxo(Seconds (20.0), Seconds (25.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 14);
-        simular_fluxo(Seconds (25.0), Seconds (30.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 15);
-    #endif
 
-    /* */
-    #if 1
-        DataRate dataRate = DataRate ("100Mbps");
-        uint32_t packetSize = 1024;
-        // Servidor envia para hosts
-        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.8.1"), N2, dataRate, packetSize, 10);
-        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.5.1"), N5, dataRate, packetSize, 11);
-        simular_fluxo(Seconds (1.0), Seconds (50.0), N1, Ipv4Address("10.1.2.1"), N6, dataRate, packetSize, 12);
-        
-        // Interferencia
-        simular_fluxo(Seconds (1.0), Seconds (15.0), N8, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 13);
-        simular_fluxo(Seconds (1.0), Seconds (15.0), N4, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 14);
-        simular_fluxo(Seconds (1.0), Seconds (10.0), N8, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 15);
-        simular_fluxo(Seconds (1.0), Seconds (25.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 16);
-        simular_fluxo(Seconds (1.0), Seconds (30.0), N4, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 17);
-        
-        // Servidor envia para mais hosts
-        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.1.11.1"), N7, dataRate, packetSize, 18);
-        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 19);
-        simular_fluxo(Seconds (1.0), Seconds (30.0), N1, Ipv4Address("10.55.7.1"), S4, dataRate, packetSize, 20);
-        
-        // Servidor envia para mais hosts
-        simular_fluxo(Seconds (7.0), Seconds (10.0), N5, Ipv4Address("10.1.11.1"), N7, dataRate, packetSize, 21);
-        simular_fluxo(Seconds (15.0), Seconds (17.0), N7, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 22);
-        simular_fluxo(Seconds (20.0), Seconds (23.0), N8, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 23);
-        simular_fluxo(Seconds (25.0), Seconds (27.0), N6, Ipv4Address("10.1.3.1"), N4, dataRate, packetSize, 24);
-        simular_fluxo(Seconds (30.0), Seconds (33.0), N3, Ipv4Address("10.1.2.1"), N6, dataRate, packetSize, 25);
-    #endif
+    /* ##################### CONFIGURACAO DAS SIMULACOES #################### */
+
+    DataRate dataRate = DataRate ("4Mbps");
+    uint32_t packetSize = 1024;
+    std::string protocolo_TCP = "ns3::TcpSocketFactory";
+    std::string protocolo_UDP = "ns3::TcpSocketFactory";
+
+    std::string nome_arquivo_saida = "padrao_simple-global-routing.flowmon";
+
+
+    /* ####################### SIMULACOES EXECUTADAS ######################## */
 
     #if 0
-        //uint16_t port = 9;
-        
-        OnOffHelper onoff ("ns3::TcpSocketFactory", 
-                     Address (InetSocketAddress (Ipv4Address("10.1.5.1"), port)));
-        onoff.SetConstantRate (DataRate ("4000kb/s"));
-        ApplicationContainer apps = onoff.Install (N1);
-        apps.Start (Seconds (1.0));
-        apps.Stop (Seconds (10.0));
-
-        // Create a packet sink to receive these packets
-        PacketSinkHelper sink ("ns3::TcpSocketFactory",
-                             Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-        apps = sink.Install (N5);
-        apps.Start (Seconds (1.0));
-        apps.Stop (Seconds (10.0));
+        nome_arquivo_saida = "simulacao_01.xml";
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+    #endif
     
-        onoff.SetAttribute ("Remote", 
-                      AddressValue (InetSocketAddress (Ipv4Address("10.1.8.1"), port)));
-        apps = onoff.Install (N1);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));
-
-        // Create a packet sink to receive these packets
-        apps = sink.Install (N2);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));
-        
-        /*OnOffHelper onoff ("Remote", 
-                      AddressValue (InetSocketAddress (Ipv4Address("10.1.5.1"), port)));
-        onoff.SetConstantRate (DataRate ("4000kb/s"));
-        ApplicationContainer apps = onoff.Install (N1);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));
-
-        // Create a packet sink to receive these packets
-        
-        PacketSinkHelper sink ("ns3::TcpSocketFactory",
-                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-        
-        apps = sink.Install (N5);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));
-        
-        onoff.SetAttribute ("Remote", 
-                      AddressValue (InetSocketAddress (Ipv4Address("10.1.8.1"), port)));
-        apps = onoff.Install (N1);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));
-
-        // Create a packet sink to receive these packets
-        apps = sink.Install (N2);
-        apps.Start (Seconds (1.1));
-        apps.Stop (Seconds (10.0));*/
+    #if 0
+        nome_arquivo_saida = "simulacao_02.xml";
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
     #endif
-
-    AsciiTraceHelper ascii;
-    p2p.EnableAsciiAll (ascii.CreateFileStream ("simple-global-routing.tr"));
-    p2p.EnablePcapAll ("simple-global-routing");
+    
+    #if 0
+        nome_arquivo_saida = "simulacao_03.xml";
+        simular_fluxo(protocolo_UDP, Seconds (5*1.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+    #endif
+   
+    #if 0
+        nome_arquivo_saida = "simulacao_04.xml";
+        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+    #endif
+    
+    #if 0
+        nome_arquivo_saida = "simulacao_05.xml";
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+    #endif
+    
+    #if 0
+        nome_arquivo_saida = "simulacao_06.xml";
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+    #endif
+    
+    #if 0
+        nome_arquivo_saida = "simulacao_07.xml";
+        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+    #endif
+    
+    #if 1
+        nome_arquivo_saida = "simulacao_08.xml";
+        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+    #endif
 
     // Flow Monitor
     FlowMonitorHelper flowmonHelper;
@@ -556,9 +522,10 @@ int main (int argc, char *argv[]) {
     NS_LOG_INFO ("Done.");
 
     if (enableFlowMonitor) {
-        flowmonHelper.SerializeToXmlFile ("simple-global-routing.flowmon", false, false);
+        flowmonHelper.SerializeToXmlFile (nome_arquivo_saida, false, false);
     }
 
     Simulator::Destroy ();
+
     return 0;
 }
