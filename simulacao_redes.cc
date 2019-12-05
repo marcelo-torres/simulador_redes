@@ -49,6 +49,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-global-routing-helper.h"
+#include "ns3/flow-monitor.h"
 
 #include "ns3/traffic-control-module.h"
 #include "ns3/csma-module.h"
@@ -243,7 +244,7 @@ int main (int argc, char *argv[]) {
     PointToPointHelper p2p;
   
     std::string tamanho_fila_global = "10p";
-    std::string tamanho_fila_comum = "4p";
+    std::string tamanho_fila_comum = "6p";
   
     /* ############################### GLOBAL ############################### */
     p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
@@ -450,70 +451,114 @@ int main (int argc, char *argv[]) {
 
     /* ####################### SIMULACOES EXECUTADAS ######################## */
 
+    // simular_fluxo(protocolo_TCP, Seconds (.0), Seconds (.0), , Ipv4Address(""), , dataRate, packetSize, 10);
+
+    double tempo_fim = 60.0;
+
     #if 0
         nome_arquivo_saida = "simulacao_01.xml";
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 11);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 12);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 13);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 14);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 15);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 16);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 17);
     #endif
     
     #if 0
         nome_arquivo_saida = "simulacao_02.xml";
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 18);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 19);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 20);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 21);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 22);
     #endif
     
     #if 0
         nome_arquivo_saida = "simulacao_03.xml";
-        simular_fluxo(protocolo_UDP, Seconds (5*1.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 23);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 24);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 25);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 26);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 27);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 28);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 29);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 30);
     #endif
    
     #if 0
         nome_arquivo_saida = "simulacao_04.xml";
-        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 31);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 32);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 33);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 34);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 35);
     #endif
     
     #if 0
         nome_arquivo_saida = "simulacao_05.xml";
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 36);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 37);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 38);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 39);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 40);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 41);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 42);
     #endif
     
     #if 0
         nome_arquivo_saida = "simulacao_06.xml";
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 43);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 44);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 45);
     #endif
     
     #if 0
         nome_arquivo_saida = "simulacao_07.xml";
-        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*20.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*10.0), Seconds (5*20.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*15.0), Seconds (5*20.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 46);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 47);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 48);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 49);
+        
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 50);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 51);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 52);
     #endif
     
     #if 1
         nome_arquivo_saida = "simulacao_08.xml";
-        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_UDP, Seconds (5*0.0), Seconds (5*10.0), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 10);
-        simular_fluxo(protocolo_TCP, Seconds (5*5.0), Seconds (5*10.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), N1, Ipv4Address("10.1.9.1"), N3, dataRate, packetSize, 53);
+        simular_fluxo(protocolo_UDP, Seconds (0.0), Seconds (tempo_fim), S1, Ipv4Address("10.55.2.1"), S2, dataRate, packetSize, 54);
+        simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (tempo_fim), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 55);
     #endif
+
+    //nome_arquivo_saida = "pode_me_excluir.xml";
+    //simular_fluxo(protocolo_TCP, Seconds (0.0), Seconds (3.0), N2, Ipv4Address("10.55.3.1"), S3, dataRate, packetSize, 10);
 
     // Flow Monitor
     FlowMonitorHelper flowmonHelper;
     if (enableFlowMonitor) {
-        flowmonHelper.InstallAll ();
+        flowmonHelper.InstallAll ();  
     }
 
     NS_LOG_INFO ("Run Simulation.");
